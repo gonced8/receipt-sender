@@ -1,5 +1,6 @@
 import configparser
 import datetime
+from email.message import EmailMessage
 from fpdf import FPDF
 import locale
 import os
@@ -17,13 +18,12 @@ def get_filename(name, date):
 
 
 def generate_receipt(n, name, address, nif, value, date, today):
-
     document = FPDF(orientation="L", format="A5")
     document.add_page()
     document.set_margins(20, 20, 20)
     document.set_auto_page_break(False)
 
-    document.image("logo.png", x=5, y=10, w=50, type="PNG")
+    document.image("assets/logo.png", x=5, y=10, w=50, type="PNG")
 
     document.ln()
     document.set_font("helvetica", "B", size=12)
@@ -41,7 +41,7 @@ def generate_receipt(n, name, address, nif, value, date, today):
     document.multi_cell(
         w=0,
         h=5,
-        txt="Parque de Jogos 1º de Maio\nAv. Rio de Janeiro\n1700-330 Lisboa\nE-mail: scbl@badmintonlisboa.pt\nContribuinte: XXXXXXXXX",
+        txt="Parque de Jogos 1º de Maio\nAv. Rio de Janeiro\n1700-330 Lisboa\nE-mail: scbl@badmintonlisboa.pt\nContribuinte: 516248758",
         align="C",
     )
 
@@ -54,9 +54,10 @@ def generate_receipt(n, name, address, nif, value, date, today):
         txt=f"RECEBI do Exmo(a). Sr(a). {name}, morada {address}, contribuinte nº {nif}, a quantia de {value}{EURO} referente à mensalidade de {long_date}.",
     )
 
-    document.set_y(130)
+    document.set_y(125)
     document.cell(w=0, h=6, txt=today)
-    document.cell(w=0, h=6, txt="ASSINATURA", align="R")
+    # document.cell(w=0, h=6, txt="ASSINATURA", align="R")
+    document.image("assets/assinatura.png", x=140, y=120, w=50, type="PNG")
 
     document.set_y(140)
     document.cell(w=0, h=0, txt="1/1", align="C")
@@ -75,28 +76,73 @@ def generate_receipt(n, name, address, nif, value, date, today):
     return filename
 
 
-def send_email(config, name, receiver_email, nif, value, date, filename):
+def send_email(config, name, receiver_email, nif, value, filenames):
     smtp_server = config["EMAIL"]["server"]
     port = int(config["EMAIL"]["port"])  # For starttls
     sender_email = config["EMAIL"]["email"]
     password = config["EMAIL"]["password"]
+    sender = config["EMAIL"]["sender"]
+    signature_filename = config["EMAIL"]["signature"]
+    template_filename = config["EMAIL"]["template"]
+
+    msg = EmailMessage()
+
+    # Header
+    msg["Subject"] = "Recibos mensalidade SCBL"
+    msg["From"] = f"{sender} <{sender_email}>"
+    msg["To"] = f"{name} <{receiver_email}>"
+
+    # Plain text Body
+    receipts = [os.path.split(filename)[-1] for filename in filenames]
+
+    receipts_list = "- " + "\n- ".join(receipts)
 
     message = (
-        f"From: {sender_email}\n"
-        f"To: {receiver_email}\n"
-        f"Subject: e-mail teste\n"
+        "Segue em anexo os recibos:\n"
+        f"{receipts_list}\n"
         "\n"
-        "E aqui vai a mensagem."
+        "SCBL\n"
+        "\n"
+        "(Este e-mail foi gerado automaticamente.)"
     )
+    msg.set_content(message)
+
+    # HTML Body
+    """
+    with open(signature_filename, "r") as f:
+        signature = f.read()
+
+    with open(template_filename, "r") as f:
+        template = f.read()
+
+    html_message = template.format(
+        content=message.replace("\n", "<br>"), signature=signature
+    )
+    msg.add_alternative(html_message, subtype="html")
+    """
+
+    # Attachments
+    for filename, receipt in zip(filenames, receipts):
+        with open(filename, "rb") as f:
+            msg.add_attachment(
+                f.read(),
+                maintype="application",
+                subtype="octate-stream",
+                filename=receipt,
+            )
+
+    # msg = f"Subject: teste\nFrom: {sender_email}\nTo: {receiver_email}\n\nOla"
 
     # Create a secure SSL context
     context = ssl.create_default_context()
 
+    # Send e-mail
     with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
         server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message)
+        # server.set_debuglevel(1)
+        server.send_message(msg)
 
-    print(f"Sent receipt {filename} of {date} to {name} at {receiver_email}.")
+    print(f"Sent receipt {' '.join(filenames)} to {name} at {receiver_email}.")
 
 
 def get_today_date():
@@ -129,26 +175,28 @@ def main():
     sh = gc.open_by_key(config["GDRIVE"]["file_key"])
 
     # Get info page
-    info = sh.worksheet("title", "Info")
-    header = info.get_row(include_tailing_empty=False, row=1, returnas="matrix")
+    info_sheet = sh.worksheet("title", "Info")
+    header = info_sheet.get_row(include_tailing_empty=False, row=1, returnas="matrix")
     n_info = len(header)
 
     # Get payments page
-    payments = sh.worksheet("title", "Mensalidades")
-    header = payments.get_row(include_tailing_empty=False, row=1, returnas="matrix")
+    payments_sheet = sh.worksheet("title", "Mensalidades")
+    header = payments_sheet.get_row(
+        include_tailing_empty=False, row=1, returnas="matrix"
+    )
     n_months = len(header)
     dates = header[1:]
     print("dates", dates)
 
     # Get aux variables page
-    aux = sh.worksheet("title", "auxiliar")
-    n = int(aux.get_value((1, 2)))
+    aux_sheet = sh.worksheet("title", "auxiliar")
+    n = int(aux_sheet.get_value((1, 2)))
 
     # Initialize rows iterators
-    info = iter(info)
+    info = iter(info_sheet)
     next(info)
 
-    payments = iter(payments)
+    payments = iter(payments_sheet)
     next(payments)
 
     # Process each person
@@ -167,23 +215,27 @@ def main():
         # Filter already processed payments
         paid = [
             (i, date)
-            for i, (date, value) in enumerate(zip(dates, person_payments))
-            if value.upper() == "P"
+            for i, (date, state) in enumerate(zip(dates, person_payments), start=2)
+            if state.upper() == "P"
         ]
 
         # Generate receipts
         filenames = []
-        for i, date in paid:
+        for _, date in paid:
             n += 1
             filename = generate_receipt(n, name, address, nif, value, date, today)
             filenames.append(filename)
 
-        # Send e-mail and update payments page
-        send_email(config, name, email, nif, value, date, filenames)
-        wks.update_value((line, date_start + i), "E")
+        # Send e-mail
+        if filenames:
+            send_email(config, name, email, nif, value, filenames)
+
+        # Update payments
+        for i, _ in paid:
+            payments_sheet.update_value((line, i), "E")
 
     # Update aux variables
-    aux.update_value((1, 2), str(n))
+    aux_sheet.update_value((1, 2), str(n))
 
 
 if __name__ == "__main__":
