@@ -1,5 +1,6 @@
 client_secret.json
 config.ini
+docs/
 sheets.googleapis.com-python.json
 
 # Byte-compiled / optimized / DLL files
