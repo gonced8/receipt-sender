@@ -17,7 +17,7 @@ if st.button("Send e-mail"):
     # Header
     msg["Subject"] = "Recibos mensalidade SCBL"
     msg["From"] = f"{sender} <{sender_email}>"
-    msg["To"] = "Gonçalo Raposo <gonced8@gmail.com>"
+    msg["To"] = ""
 
     # Plain text Body
     message = (
