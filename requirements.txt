@@ -1,3 +1,4 @@
 fpdf
 pygsheets
+streamlit
 unidecode
