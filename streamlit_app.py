@@ -1,4 +1,5 @@
 from email.message import EmailMessage
+import ssl
 import streamlit as st
 
 st.title("Gerador de Recibos")
