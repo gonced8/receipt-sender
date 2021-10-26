@@ -1,4 +1,6 @@
-assets/
+.streamlit
+assets/stamp.png
+assets/logo.png
 client_secret.json
 config.ini
 docs/

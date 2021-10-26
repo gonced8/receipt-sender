@@ -57,7 +57,7 @@ def generate_receipt(n, name, address, nif, value, date, today):
     document.set_y(125)
     document.cell(w=0, h=6, txt=today)
     # document.cell(w=0, h=6, txt="ASSINATURA", align="R")
-    document.image("assets/assinatura.png", x=140, y=120, w=50, type="PNG")
+    document.image("assets/stamp.png", x=140, y=120, w=50, type="PNG")
 
     document.set_y(140)
     document.cell(w=0, h=0, txt="1/1", align="C")
@@ -76,14 +76,14 @@ def generate_receipt(n, name, address, nif, value, date, today):
     return filename
 
 
-def send_email(config, name, receiver_email, nif, value, filenames):
-    smtp_server = config["EMAIL"]["server"]
-    port = int(config["EMAIL"]["port"])  # For starttls
-    sender_email = config["EMAIL"]["email"]
-    password = config["EMAIL"]["password"]
-    sender = config["EMAIL"]["sender"]
-    signature_filename = config["EMAIL"]["signature"]
-    template_filename = config["EMAIL"]["template"]
+def send_email(config, password, name, receiver_email, nif, value, filenames):
+    smtp_server = config["server"]
+    port = int(config["port"])  # For starttls
+    sender_email = config["email"]
+    # password = config["password"]
+    sender = config["sender"]
+    signature_filename = config["signature"]
+    template_filename = config["template"]
 
     msg = EmailMessage()
 
