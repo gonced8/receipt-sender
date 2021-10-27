@@ -1,3 +1,4 @@
+from babel.dates import format_date
 import configparser
 import datetime
 from email.message import EmailMessage
@@ -46,7 +47,9 @@ def generate_receipt(n, name, address, nif, value, date, today):
     )
 
     EURO = chr(128)
-    long_date = datetime.datetime.strptime(date, "%Y-%m").strftime("%B de %Y")
+    long_date = format_date(
+        datetime.datetime.strptime(date, "%Y-%m"), "MMMM 'de' yyyy", locale="pt_PT"
+    )
     document.set_y(70)
     document.multi_cell(
         w=0,
@@ -146,21 +149,8 @@ def send_email(config, password, name, receiver_email, nif, value, filenames):
 
 
 def get_today_date():
-    locale.setlocale(locale.LC_TIME, "pt_PT.UTF-8")
-    week_days = [
-        "domingo",
-        "segunda-feira",
-        "terça-feira",
-        "quarta-feira",
-        "quinta-feira",
-        "sexta-feira",
-        "sábado",
-    ]
     today = datetime.date.today()
-    week_day = int(today.strftime("%w"))
-    week_day = week_days[week_day]
-    today = week_day + today.strftime(", %d de %B de %Y")
-
+    today = format_date(today, "full", locale="pt_PT")
     return today
 
 
