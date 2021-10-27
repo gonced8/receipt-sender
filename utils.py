@@ -3,8 +3,8 @@ import configparser
 import datetime
 from email.message import EmailMessage
 from fpdf import FPDF
-import locale
 import os
+from pathlib import Path
 import pygsheets
 import smtplib
 import ssl
@@ -75,6 +75,7 @@ def generate_receipt(n, name, address, nif, value, date, today):
     )
 
     filename = os.path.join("docs", get_filename(name, date) + ".pdf")
+    Path("docs").mkdir(exist_ok=True)
     document.output(filename)
     return filename
 
