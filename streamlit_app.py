@@ -107,5 +107,5 @@ if password == st.secrets["OTHER"]["authentication_password"]:
         )
         st.markdown(tmp_download_link, unsafe_allow_html=True)
 
-else:
+elif password:
     st.text("Password errada")
