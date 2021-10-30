@@ -86,7 +86,7 @@ if password == st.secrets["OTHER"]["authentication_password"]:
             )
 
             # Update payments
-            data["Recibos"]at[index, "Status"] = "E"
+            data["Recibos"].at[index, "Status"] = "E"
 
         # Get output filename
         input_name, input_extension = os.path.splitext(uploaded_file.name)
