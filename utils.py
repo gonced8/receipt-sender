@@ -1,4 +1,5 @@
 from babel.dates import format_date
+import base64
 import configparser
 import datetime
 from email.message import EmailMessage
@@ -11,14 +12,14 @@ import ssl
 import unidecode
 
 
-def get_filename(name, date):
+def get_filename(name, n):
     name = unidecode.unidecode(name)
     name = name.lower()
     name = name.replace(" ", "")
-    return name + "_" + date
+    return name + "_" + str(n)
 
 
-def generate_receipt(n, name, address, nif, value, date, today):
+def generate_receipt(date, value, description, name, number, nif, n, today):
     document = FPDF(orientation="L", format="A5")
     document.add_page()
     document.set_margins(20, 20, 20)
@@ -47,14 +48,19 @@ def generate_receipt(n, name, address, nif, value, date, today):
     )
 
     EURO = chr(128)
-    long_date = format_date(
-        datetime.datetime.strptime(date, "%Y-%m"), "MMMM 'de' yyyy", locale="pt_PT"
-    )
+    date = format_date(date, "dd/MM/yyyy")
+    text = f"No dia {date}, recebemos a quantia de {value}{EURO} referente {description.strip()}, de {name}"
+    if number:
+        text += f", sócio nº {number}"
+    if nif:
+        text += f", com o nº de contribuinte {nif}"
+    text += "."
+
     document.set_y(70)
     document.multi_cell(
         w=0,
         h=6,
-        txt=f"RECEBI do Exmo(a). Sr(a). {name}, morada {address}, contribuinte nº {nif}, a quantia de {value}{EURO} referente à mensalidade de {long_date}.",
+        txt=text,
     )
 
     document.set_y(125)
@@ -74,17 +80,17 @@ def generate_receipt(n, name, address, nif, value, date, today):
         align="C",
     )
 
-    filename = os.path.join("docs", get_filename(name, date) + ".pdf")
+    filename = os.path.join("docs", get_filename(name, n) + ".pdf")
     Path("docs").mkdir(exist_ok=True)
     document.output(filename)
     return filename
 
 
-def send_email(config, password, name, receiver_email, nif, value, filenames):
+def send_email(config, name, receiver_email, value, description, filename):
     smtp_server = config["server"]
     port = int(config["port"])  # For starttls
     sender_email = config["email"]
-    # password = config["password"]
+    password = config["email_password"]
     sender = config["sender"]
     signature_filename = config["signature"]
     template_filename = config["template"]
@@ -92,18 +98,14 @@ def send_email(config, password, name, receiver_email, nif, value, filenames):
     msg = EmailMessage()
 
     # Header
-    msg["Subject"] = "Recibos mensalidade SCBL"
+    msg["Subject"] = "Recibo SCBL"
     msg["From"] = f"{sender} <{sender_email}>"
     msg["To"] = f"{name} <{receiver_email}>"
 
     # Plain text Body
-    receipts = [os.path.split(filename)[-1] for filename in filenames]
-
-    receipts_list = "- " + "\n- ".join(receipts)
-
+    receipt = os.path.split(filename)[-1]
     message = (
-        "Segue em anexo os recibos:\n"
-        f"{receipts_list}\n"
+        f"Segue em anexo o comprovativo de pagamento referente {description}.\n"
         "\n"
         "SCBL\n"
         "\n"
@@ -126,16 +128,13 @@ def send_email(config, password, name, receiver_email, nif, value, filenames):
     """
 
     # Attachments
-    for filename, receipt in zip(filenames, receipts):
-        with open(filename, "rb") as f:
-            msg.add_attachment(
-                f.read(),
-                maintype="application",
-                subtype="octate-stream",
-                filename=receipt,
-            )
-
-    # msg = f"Subject: teste\nFrom: {sender_email}\nTo: {receiver_email}\n\nOla"
+    with open(filename, "rb") as f:
+        msg.add_attachment(
+            f.read(),
+            maintype="application",
+            subtype="octate-stream",
+            filename=receipt,
+        )
 
     # Create a secure SSL context
     context = ssl.create_default_context()
@@ -146,7 +145,7 @@ def send_email(config, password, name, receiver_email, nif, value, filenames):
         # server.set_debuglevel(1)
         server.send_message(msg)
 
-    print(f"Sent receipt {' '.join(filenames)} to {name} at {receiver_email}.")
+    print(f"Sent receipt {filename} to {name} at {receiver_email}.")
 
 
 def get_today_date():
@@ -227,6 +226,27 @@ def main():
 
     # Update aux variables
     aux_sheet.update_value((1, 2), str(n))
+
+
+def download_link(object_to_download, download_filename, download_link_text):
+    """
+    Generates a link to download the given object_to_download.
+    From Chad_Mitchell at: https://discuss.streamlit.io/t/heres-a-download-function-that-works-for-dataframes-and-txt/4052
+
+    object_to_download (str, pd.DataFrame):  The object to be downloaded.
+    download_filename (str): filename and extension of file. e.g. mydata.csv, some_txt_output.txt
+    download_link_text (str): Text to display for download link.
+
+    Examples:
+    download_link(YOUR_DF, 'YOUR_DF.csv', 'Click here to download data!')
+    download_link(YOUR_STRING, 'YOUR_STRING.txt', 'Click here to download your text!')
+
+    """
+
+    # some strings <-> bytes conversions necessary here
+    b64 = base64.b64encode(object_to_download).decode()
+
+    return f'<a href="data:file/txt;base64,{b64}" download="{download_filename}">{download_link_text}</a>'
 
 
 if __name__ == "__main__":

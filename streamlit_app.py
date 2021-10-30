@@ -1,5 +1,7 @@
 from email.message import EmailMessage
+import io
 import openpyxl
+import os
 import pandas as pd
 from pathlib import Path
 import requests
@@ -29,76 +31,81 @@ st.title("Gerador de Recibos")
 
 password = st.text_input("Enter a password", type="password")
 
-uploaded_file = st.file_uploader("Selecionar ficheiro")
-if uploaded_file is not None and st.button("RUN"):
-    data = pd.read_excel(uploaded_file, sheet_name=None)
+if password == st.secrets["OTHER"]["authentication_password"]:
+    uploaded_file = st.file_uploader(
+        "Selecionar ficheiro",
+        "xlsx",
+    )
 
-    today = get_today_date()
+    if uploaded_file is not None and st.button("RUN"):
+        data = pd.read_excel(uploaded_file, sheet_name=None)
+        for sheet in data:
+            data[sheet].fillna("", inplace=True)
 
-    # Get dates
-    dates = data["Mensalidades"].columns[1:].values
-    n_months = len(dates)
-    print(f"{dates=}")
+        today = get_today_date()
 
-    # Get aux variables
-    data["auxiliar"] = data["auxiliar"].set_index("Descrição")
-    n = data["auxiliar"].loc["Contador"].item()
+        # Process each person
+        for index, receipt in data["Recibos"].iterrows():
+            print(
+                index,
+                receipt["Nº de Sócio (opcional)"],
+                receipt["Nome do Atleta"],
+                receipt["E-mail"],
+                receipt["Contribuinte (opcional)"],
+                receipt["Data de recebimento"],
+                receipt["Valor"],
+                receipt["Descritivo"],
+                receipt["Nº do Recibo"],
+                receipt["Status"],
+            )
 
-    # Process each person
-    for (index, person_info), (_, person_payments) in zip(
-        data["Info"].iterrows(),
-        data["Mensalidades"].iterrows(),
-    ):
-        # Get person info
-        print(
-            index,
-            person_info["Nome"],
-            person_info["E-mail"],
-            person_info["Contribuinte"],
-            person_info["Mensalidade"],
-        )
+            # Skip already processed receipts
+            if receipt["Status"].upper() != "P":
+                continue
 
-        # Get person payments
-        print(person_payments[1:])
-
-        # Check if inconsistency in pages
-        assert (
-            person_info["Nome"] == person_payments["Nome"]
-        ), f"Inconsistency in line {index+1}. Info has {person_info['Nome']} but Mensalidades has {person_payments['Nome']}"
-
-        # Get payments to send e-mail
-        payments = person_payments[1:][person_payments[1:] == "P"].keys()
-        if payments.empty:
-            continue
-
-        # Generate receipts
-        filenames = []
-        print(payments)
-        for date in payments:
-            print(date)
-            n += 1
+            # Generate receipt
             filename = generate_receipt(
-                n,
-                person_info["Nome"],
-                person_info["Morada"],
-                person_info["Contribuinte"],
-                person_info["Mensalidade"],
-                date,
+                receipt["Data de recebimento"],
+                receipt["Valor"],
+                receipt["Descritivo"],
+                receipt["Nome do Atleta"],
+                receipt["Nº de Sócio (opcional)"],
+                receipt["Contribuinte (opcional)"],
+                receipt["Nº do Recibo"],
                 today,
             )
-            filenames.append(filename)
 
-        # Send e-mail
-        if filenames:
+            # Send e-mail
+            """
             send_email(
                 st.secrets["EMAIL"],
-                password,
-                person_info["Nome"],
-                person_info["E-mail"],
-                person_info["Contribuinte"],
-                person_info["Mensalidade"],
-                filenames,
+                receipt["Nome do Atleta"],
+                receipt["E-mail"],
+                receipt["Valor"],
+                receipt["Descritivo"],
+                filename,
             )
+            """
 
-        # Update payments
-        person_payments[payments] = "E"
+            # Update payments
+            data["Recibos"]["Status"].iloc[index] = "E"
+
+        # Get output filename
+        input_name, input_extension = os.path.splitext(uploaded_file.name)
+        output_name = input_name + "_atualizado" + input_extension
+
+        # Generate new excel
+        output = io.BytesIO()
+        writer = pd.ExcelWriter(output, engine="openpyxl")
+        data["Recibos"].to_excel(writer, "Recibos")
+        writer.save()
+        xlsx_data = output.getvalue()
+
+        # Download updated file
+        tmp_download_link = download_link(
+            xlsx_data, output_name, "Click here to download"
+        )
+        st.markdown(tmp_download_link, unsafe_allow_html=True)
+
+else:
+    st.text("Password errada")
