@@ -48,10 +48,10 @@ if password == st.secrets["OTHER"]["authentication_password"]:
         for index, receipt in data["Recibos"].iterrows():
             print(
                 index,
-                receipt["Nº de Sócio (opcional)"],
+                receipt["Nº de Sócio"],
                 receipt["Nome do Atleta"],
                 receipt["E-mail"],
-                receipt["Contribuinte (opcional)"],
+                receipt["Contribuinte"],
                 receipt["Data de recebimento"],
                 receipt["Valor"],
                 receipt["Descritivo"],
@@ -69,8 +69,8 @@ if password == st.secrets["OTHER"]["authentication_password"]:
                 receipt["Valor"],
                 receipt["Descritivo"],
                 receipt["Nome do Atleta"],
-                receipt["Nº de Sócio (opcional)"],
-                receipt["Contribuinte (opcional)"],
+                receipt["Nº de Sócio"],
+                receipt["Contribuinte"],
                 receipt["Nº do Recibo"],
                 today,
             )
