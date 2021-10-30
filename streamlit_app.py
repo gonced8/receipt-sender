@@ -37,7 +37,7 @@ if password == st.secrets["OTHER"]["authentication_password"]:
         "xlsx",
     )
 
-    if uploaded_file is not None and st.button("RUN"):
+    if uploaded_file is not None and st.button("Run"):
         data = pd.read_excel(uploaded_file, sheet_name=None)
         for sheet in data:
             data[sheet].fillna("", inplace=True)
@@ -76,7 +76,6 @@ if password == st.secrets["OTHER"]["authentication_password"]:
             )
 
             # Send e-mail
-            """
             send_email(
                 st.secrets["EMAIL"],
                 receipt["Nome do Atleta"],
@@ -85,7 +84,6 @@ if password == st.secrets["OTHER"]["authentication_password"]:
                 receipt["Descritivo"],
                 filename,
             )
-            """
 
             # Update payments
             data["Recibos"]["Status"].iloc[index] = "E"
