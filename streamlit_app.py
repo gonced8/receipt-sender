@@ -76,14 +76,17 @@ if password == st.secrets["OTHER"]["authentication_password"]:
             )
 
             # Send e-mail
-            send_email(
-                st.secrets["EMAIL"],
-                receipt["Nome do Atleta"],
-                receipt["E-mail"],
-                receipt["Valor"],
-                receipt["Descritivo"],
-                filename,
-            )
+            if receipt["E-mail"]:
+                send_email(
+                    st.secrets["EMAIL"],
+                    receipt["Nome do Atleta"],
+                    receipt["E-mail"],
+                    receipt["Valor"],
+                    receipt["Descritivo"],
+                    filename,
+                )
+            else:
+                print(f"{receipt['Nome do Atleta']} has not an e-mail...")
 
             # Update payments
             data["Recibos"].at[index, "Status"] = "E"
@@ -95,7 +98,7 @@ if password == st.secrets["OTHER"]["authentication_password"]:
         # Generate new excel
         output = io.BytesIO()
         writer = pd.ExcelWriter(output, engine="openpyxl")
-        data["Recibos"].to_excel(writer, "Recibos")
+        data["Recibos"].to_excel(writer, "Recibos", index=False)
         writer.save()
         xlsx_data = output.getvalue()
 

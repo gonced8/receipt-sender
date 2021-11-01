@@ -49,11 +49,11 @@ def generate_receipt(date, value, description, name, number, nif, n, today):
 
     EURO = chr(128)
     date = format_date(date, "dd/MM/yyyy")
-    text = f"No dia {date}, recebemos a quantia de {value}{EURO} referente {description.strip()}, de {name}"
+    text = f"No dia {date}, recebemos a quantia de {value:.2f}{EURO} referente {description.strip()}, de {name}"
     if number:
-        text += f", sócio nº {number}"
+        text += f", sócio nº {number:.0f}"
     if nif:
-        text += f", com o nº de contribuinte {nif}"
+        text += f", com o nº de contribuinte {nif:.0f}"
     text += "."
 
     document.set_y(70)
