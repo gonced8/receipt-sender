@@ -86,6 +86,17 @@ def generate_receipt(date, value, description, name, number, nif, n, today):
     return filename
 
 
+def strip_description(description):
+    cases = ["a", "o", "à", "ao", "as", "os"]
+
+    for case in cases:
+        if description.startswith(case + " "):
+            description = description.split(" ", 1)[1]
+            break
+
+    return description
+
+
 def send_email(config, name, receiver_email, value, description, filename):
     smtp_server = config["server"]
     port = int(config["port"])  # For starttls
@@ -96,25 +107,20 @@ def send_email(config, name, receiver_email, value, description, filename):
     template_filename = config["template"]
 
     msg = EmailMessage()
+    subject_description = strip_description(description)
 
     # Header
-    msg["Subject"] = "Recibo SCBL"
+    msg["Subject"] = f"Recibo SCBL - {subject_description}"
     msg["From"] = f"{sender} <{sender_email}>"
     msg["To"] = f"{name} <{receiver_email}>"
 
     # Plain text Body
     receipt = os.path.split(filename)[-1]
-    message = (
-        f"Segue em anexo o comprovativo de pagamento referente {description}.\n"
-        "\n"
-        "SCBL\n"
-        "\n"
-        "(Este e-mail foi gerado automaticamente.)"
-    )
-    msg.set_content(message)
+    message = f"Segue em anexo o comprovativo de pagamento referente {description}."
+    plain_message = message + "\n\n(Este e-mail foi gerado automaticamente.)\n\nSCBL"
+    msg.set_content(plain_message)
 
     # HTML Body
-    """
     with open(signature_filename, "r") as f:
         signature = f.read()
 
@@ -125,7 +131,6 @@ def send_email(config, name, receiver_email, value, description, filename):
         content=message.replace("\n", "<br>"), signature=signature
     )
     msg.add_alternative(html_message, subtype="html")
-    """
 
     # Attachments
     with open(filename, "rb") as f:
