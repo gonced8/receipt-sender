@@ -4,10 +4,10 @@ import openpyxl
 import os
 import pandas as pd
 from pathlib import Path
-import requests
 import smtplib
 import ssl
 import streamlit as st
+import urllib.request
 
 from utils import *
 
@@ -17,21 +17,20 @@ from utils import *
 
 # Logo
 if not Path("assets/logo.png").is_file():
-    img_data = requests.get(st.secrets["IMAGES"]["logo"]).content
-    with open("assets/logo.png", "wb") as handler:
-        handler.write(img_data)
+    urllib.request.urlretrieve(st.secrets["IMAGES"]["logo"], "assets/logo.png")
+    print("Downloaded logo")
 
 # Stamp
 if not Path("assets/stamp.png").is_file():
-    img_data = requests.get(st.secrets["IMAGES"]["stamp"]).content
-    with open("assets/stamp.png", "wb") as handler:
-        handler.write(img_data)
+    urllib.request.urlretrieve(st.secrets["IMAGES"]["stamp"], "assets/stamp.png")
+    print("Downloaded stamp")
 
 st.title("Gerador de Recibos")
 
-password = st.text_input("Enter a password", type="password")
+# password = st.text_input("Enter a password", type="password")
 
-if password == st.secrets["OTHER"]["authentication_password"]:
+# if password == st.secrets["OTHER"]["authentication_password"]:
+if True:
     uploaded_file = st.file_uploader(
         "Selecionar ficheiro",
         "xlsx",
