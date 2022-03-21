@@ -27,10 +27,10 @@ if not Path("assets/stamp.png").is_file():
 
 st.title("Gerador de Recibos")
 
-# password = st.text_input("Enter a password", type="password")
+password = st.text_input("Enter a password", type="password")
 
-# if password == st.secrets["OTHER"]["authentication_password"]:
-if True:
+if password == st.secrets["OTHER"]["authentication_password"]:
+#if True:
     uploaded_file = st.file_uploader(
         "Selecionar ficheiro",
         "xlsx",
